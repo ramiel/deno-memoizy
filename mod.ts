@@ -1,10 +1,10 @@
-const defaultCacheKeyBuilder = (...args: unknown[]): string =>
+const defaultCacheKeyBuilder = (...args: any[]): string =>
   args.length === 0 ? "__0aritykey__" : JSON.stringify(args);
 
 const isPromise = <TResult>(value: unknown): value is Promise<TResult> =>
   value instanceof Promise;
 
-interface GenericMap<TKey, TValue> {
+export interface GenericCache<TKey = void, TValue = void> {
   has: (k: TKey) => boolean;
   get: (k: TKey) => TValue | undefined;
   set: (k: TKey, v: TValue) => void;
@@ -12,16 +12,16 @@ interface GenericMap<TKey, TValue> {
   clear?: () => void;
 }
 
-export interface MemoizyOptions<TResult> {
-  cache?: () => GenericMap<string, TResult>;
+export interface MemoizyOptions<TResult = any> {
+  cache?: () => GenericCache<string, TResult>;
   maxAge?: number;
-  cacheKey?: (...args: unknown[]) => string;
+  cacheKey?: (...args: any[]) => string;
   valueAccept?: null | ((err: Error | null, res?: TResult) => boolean);
 }
 
 export interface MemoizedFunction<TResult> {
-  (...args: unknown[]): TResult;
-  delete: (...args: unknown[]) => boolean;
+  (...args: any[]): TResult;
+  delete: (...args: any[]) => boolean;
   clear: () => void;
 }
 
@@ -32,7 +32,21 @@ const defaultOptions = {
   valueAccept: null,
 };
 
-const memoizy = <TResult>(
+/**
+ * Givent a function returns the memoized version of it
+ * @example
+ * const add = (a, b) => a + b;
+ * const memAdd = memoizy(add);
+ * const res = memAdd(4, 5);
+ * 
+ * @param fn The function to be memoized
+ * @param [config] The config for the memoization process. All the config are optional
+ * @param [config.cache] A factory that returns a map like cache
+ * @param [config.maxAge] Time, in milliseconds, to retain the result of the memoization
+ * @param [config.cacheKey] A function to return the memoization key given the arguments of the function
+ * @param [config.valueAccept] A function that, given the result, returns a boolean to keep it or not.
+ */
+export const memoizy = <TResult>(
   fn: (...args: any[]) => TResult,
   {
     cache: cacheFactory = () => new Map<string, TResult>(),
@@ -78,7 +92,7 @@ const memoizy = <TResult>(
     return value;
   };
 
-  memoized.delete = (...args: unknown[]) => cache.delete(cacheKey(...args));
+  memoized.delete = (...args: any[]) => cache.delete(cacheKey(...args));
   memoized.clear = () => {
     if (cache.clear instanceof Function) {
       cache.clear();

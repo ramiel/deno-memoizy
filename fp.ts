@@ -6,7 +6,7 @@ const curry: any = (fn: Function, ...args: any[]) =>
 const curried = curry(<TResult>(options: MemoizyOptions<TResult>, fn: (...args: any[]) => TResult) => memoizy(fn, options))
 
 function fpmemoizy<TResult>( options: MemoizyOptions<TResult>, fn: (...args: any[]) => TResult ) : MemoizedFunction<TResult>;
-function fpmemoizy<TResult>(options: MemoizyOptions<TResult>): ((fn: (...args: any[]) => TResult) => MemoizedFunction<TResult>);
+function fpmemoizy(options: MemoizyOptions): (<TResult>(fn: (...args: any[]) => TResult) => MemoizedFunction<TResult>);
 function fpmemoizy(...args: any[]) {
   return curried(...args);
 }
