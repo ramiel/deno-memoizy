@@ -12,16 +12,16 @@ interface GenericMap<TKey, TValue> {
   clear?: () => void;
 }
 
-interface MemoizyOptions<TResult> {
+export interface MemoizyOptions<TResult> {
   cache?: () => GenericMap<string, TResult>;
   maxAge?: number;
-  cacheKey?: (...args: [unknown]) => string;
+  cacheKey?: (...args: unknown[]) => string;
   valueAccept?: null | ((err: Error | null, res?: TResult) => boolean);
 }
 
-interface MemoizedFunction<TResult> {
-  (...args: [unknown]): TResult | undefined;
-  delete: (...args: [unknown]) => boolean;
+export interface MemoizedFunction<TResult> {
+  (...args: unknown[]): TResult;
+  delete: (...args: unknown[]) => boolean;
   clear: () => void;
 }
 
@@ -33,13 +33,13 @@ const defaultOptions = {
 };
 
 const memoizy = <TResult>(
-  fn: (...args: [unknown]) => TResult,
+  fn: (...args: any[]) => TResult,
   {
     cache: cacheFactory = () => new Map<string, TResult>(),
     maxAge = Infinity,
     cacheKey = defaultCacheKeyBuilder,
     valueAccept = null,
-  } = defaultOptions as MemoizyOptions<TResult>
+  } = defaultOptions as MemoizyOptions<TResult>,
 ): MemoizedFunction<TResult> => {
   const hasExpireDate = maxAge > 0 && maxAge < Infinity;
   const cache = cacheFactory();
@@ -53,10 +53,10 @@ const memoizy = <TResult>(
     cache.set(key, value);
   };
 
-  const memoized = (...args: [unknown]) => {
+  const memoized = (...args: any[]) => {
     const key = cacheKey(...args);
     if (cache.has(key)) {
-      return cache.get(key);
+      return cache.get(key) as TResult;
     }
     const value = fn(...args);
 
@@ -78,7 +78,7 @@ const memoizy = <TResult>(
     return value;
   };
 
-  memoized.delete = (...args: [unknown]) => cache.delete(cacheKey(...args));
+  memoized.delete = (...args: unknown[]) => cache.delete(cacheKey(...args));
   memoized.clear = () => {
     if (cache.clear instanceof Function) {
       cache.clear();

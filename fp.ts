@@ -1,8 +1,14 @@
-import memoizy from "./mod.ts";
+import memoizy, { MemoizyOptions, MemoizedFunction } from "./mod.ts";
 
-// type Curry = (fn: Function) => (())
-
-const curry = (fn, ...args) =>
+const curry: any = (fn: Function, ...args: any[]) =>
   args.length >= fn.length ? fn(...args) : curry.bind(null, fn, ...args);
 
-module.exports = curry((options, fn) => memoizy(fn, options));
+const curried = curry(<TResult>(options: MemoizyOptions<TResult>, fn: (...args: any[]) => TResult) => memoizy(fn, options))
+
+function fpmemoizy<TResult>( options: MemoizyOptions<TResult>, fn: (...args: any[]) => TResult ) : MemoizedFunction<TResult>;
+function fpmemoizy<TResult>(options: MemoizyOptions<TResult>): ((fn: (...args: any[]) => TResult) => MemoizedFunction<TResult>);
+function fpmemoizy(...args: any[]) {
+  return curried(...args);
+}
+
+export default fpmemoizy;
