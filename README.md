@@ -21,7 +21,7 @@ Note: Looking for the node version? Check [memoizy](https://github.com/ramiel/me
 Memoize the return value of a function
 
 ```js
-const memoizy = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
 const fact = (n) => {
   if(n === 1) return n;
@@ -58,9 +58,9 @@ and `options` is an (optional) object with the following keys:
 ### Expire data
 
 ```js
-const memoize = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
-const double = memoize(a => a * 2, {maxAge: 2000});
+const double = memoizy(a => a * 2, {maxAge: 2000});
 
 double(2); // 4
 double(2); // returns memoized 4
@@ -71,13 +71,13 @@ double(2); // Original function is called again and 4 is returned. The value is 
 ### Discard rejected promises
 
 ```js
-const memoize = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = async (a) => {
   if(a > 10) return 100;
   throw new Error('Value must be more then 10');
 }
-const memoized = memoize(originalFn, {valueAccept: (err, value) => !err});
+const memoized = memoizy(originalFn, {valueAccept: (err, value) => !err});
 
 await memoized(1); // throw an error and the value is not memoized
 await memoized(15); // returns 100 and the value is memoized
@@ -87,14 +87,14 @@ await memoized(15); // returns 100 and the value is memoized
 ### Discard some values
 
 ```js
-const memoize = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = (a) => {
   if(a > 10) return true;
   return false;
 }
 // Tell to ignore the false value returned
-const memoized = memoize(originalFn, {valueAccept: (err, value) => value === true});
+const memoized = memoizy(originalFn, {valueAccept: (err, value) => value === true});
 
 await memoized(1); // ignores the result since it's false
 await memoized(15); // returns true and it's memoized
@@ -103,11 +103,11 @@ await memoized(15); // returns true and it's memoized
 ### Delete and Clear
 
 ```js
-const memoize = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
 const sum = (a, b) => a + b;
 
-const memSum = memoize(sum);
+const memSum = memoizy(sum);
 
 memSum(5, 4); // returns 9;
 memSum(1, 3); // returns 4;
@@ -129,7 +129,7 @@ If the cache doesn't support clear, it's up to you not to call it. In case an er
 Look [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap#Implementing_a_WeakMap-like_class_with_a_.clear()_method) for a way to use a weak map with clear implementd, as cache.
 
 ```js
-const memoizy = require('memoizy');
+import memoizy from 'https://deno.land/x/memoizy/mod.ts';
 
  const AlternativeCacheFactory = () => {
   let data = {};
@@ -151,7 +151,7 @@ Let's see how to use a WeakMap, without implementing the optional clear.
 
 ```js
 const fn = jest.fn(obj => ({ ...obj, date: new Date() }));
-const memFn = memoizer(fn, {
+const memFn = memoizy(fn, {
   // Specify a cache factory that returns a new WeakMap
   cache: () => new WeakMap(), 
   // A WeakMap only accept non-primitive values as key.
@@ -173,7 +173,7 @@ It has the same features and the following differences:
 An example
 
 ```js
-const memoizy = require('memoizy/fp');
+import memoizy from 'https://deno.land/x/memoizy/fp.ts';
 
 // since it is curried, we can pass just options and a new function will be returned
 const memoizeFor5Seconds = memoizy({maxage: 5 * 1000});
