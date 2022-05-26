@@ -21,7 +21,7 @@ Note: Looking for the node version? Check [memoizy](https://github.com/ramiel/me
 Memoize the return value of a function
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const fact = (n) => {
   if(n === 1) return n;
@@ -58,7 +58,7 @@ and `options` is an (optional) object with the following keys:
 ### Expire data
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const double = memoizy(a => a * 2, {maxAge: 2000});
 
@@ -71,7 +71,7 @@ double(2); // Original function is called again and 4 is returned. The value is 
 ### Discard rejected promises
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = async (a) => {
   if(a > 10) return 100;
@@ -87,7 +87,7 @@ await memoized(15); // returns 100 and the value is memoized
 ### Discard some values
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = (a) => {
   if(a > 10) return true;
@@ -103,7 +103,7 @@ await memoized(15); // returns true and it's memoized
 ### Delete and Clear
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const sum = (a, b) => a + b;
 
@@ -129,7 +129,7 @@ If the cache doesn't support clear, it's up to you not to call it. In case an er
 Look [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap#Implementing_a_WeakMap-like_class_with_a_.clear()_method) for a way to use a weak map with clear implementd, as cache.
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
  const AlternativeCacheFactory = () => {
   let data = {};
@@ -173,7 +173,7 @@ It has the same features and the following differences:
 An example
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/fp.ts';
+import { fp as memoizy } from 'https://deno.land/x/memoizy/fp.ts';
 
 // since it is curried, we can pass just options and a new function will be returned
 const memoizeFor5Seconds = memoizy({maxage: 5 * 1000});
