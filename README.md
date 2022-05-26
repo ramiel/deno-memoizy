@@ -21,7 +21,7 @@ Note: Looking for the node version? Check [memoizy](https://github.com/ramiel/me
 Memoize the return value of a function
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const fact = (n) => {
   if(n === 1) return n;
@@ -58,7 +58,7 @@ and `options` is an (optional) object with the following keys:
 ### Expire data
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const double = memoizy(a => a * 2, {maxAge: 2000});
 
@@ -71,7 +71,7 @@ double(2); // Original function is called again and 4 is returned. The value is 
 ### Discard rejected promises
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = async (a) => {
   if(a > 10) return 100;
@@ -87,7 +87,7 @@ await memoized(15); // returns 100 and the value is memoized
 ### Discard some values
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const originalFn = (a) => {
   if(a > 10) return true;
@@ -103,7 +103,7 @@ await memoized(15); // returns true and it's memoized
 ### Delete and Clear
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
 const sum = (a, b) => a + b;
 
@@ -129,7 +129,7 @@ If the cache doesn't support clear, it's up to you not to call it. In case an er
 Look [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap#Implementing_a_WeakMap-like_class_with_a_.clear()_method) for a way to use a weak map with clear implementd, as cache.
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/mod.ts';
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
 
  const AlternativeCacheFactory = () => {
   let data = {};
@@ -162,6 +162,46 @@ const memFn = memoizy(fn, {
 });
 ```
 
+## Use Redis (or any cache that can handle data expiration)
+
+Your cache may have the ability to handle expiration by itself, for example Redis can do it.
+In this case you don't want memoizy to handle expiration internally just because it's more performant
+to let Redis do the job. You can specify `cacheHandlesExpiration = true` in the options. 
+The only difference is that the cache you provide must expect the expiration time in milliseconds 
+as third parameter of the `set` method. Here below an example with redis
+
+```js
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
+import { connect } from "https://deno.land/x/redis@v0.25.5/mod.ts";
+const redis = await connect({
+  // ...redis options
+});
+
+const redisCache = {
+  get: redis.get.bind(redis),
+  clear: redis.flushdb.bind(redis),
+  delete: redis.del.bind(redis),
+  set: (key, value, expiration) => {
+    if(expiration) {
+      return redis.set(key, value, {px: expiration});
+    } else {
+      return redis.set(key, value);
+    }
+  }
+};
+/**
+ * Function memoized with redis must return a promise because 
+ * redis lookup is asynchronous by nature
+ **/
+const fn = async (a,b) => a * b;
+
+const memoizedMultiplyOnRedis = memoizy(fn, {
+  maxAge: 5000,
+  cache: () => redisCache,
+  cacheHandlesExpiration: true,
+})
+```
+
 ## FP style alternative
 
 This library offers a variant which is handy if you develop in functional programming style.
@@ -173,7 +213,7 @@ It has the same features and the following differences:
 An example
 
 ```js
-import memoizy from 'https://deno.land/x/memoizy/fp.ts';
+import { fp as memoizy } from 'https://deno.land/x/memoizy/fp.ts';
 
 // since it is curried, we can pass just options and a new function will be returned
 const memoizeFor5Seconds = memoizy({maxage: 5 * 1000});

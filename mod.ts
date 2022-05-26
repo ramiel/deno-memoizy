@@ -1,36 +1,60 @@
 const defaultCacheKeyBuilder = (...args: any[]): string =>
   args.length === 0 ? "__0aritykey__" : JSON.stringify(args);
 
-const isPromise = <TResult>(value: unknown): value is Promise<TResult> =>
-  value instanceof Promise;
+const isPromise = <TResult>(
+  value: unknown,
+): value is Promise<TResult> => value instanceof Promise;
 
 export interface GenericCache<TKey = void, TValue = void> {
-  has: (k: TKey) => boolean;
+  has: (k: TKey) => boolean | Promise<boolean>;
   get: (k: TKey) => TValue | undefined;
   set: (k: TKey, v: TValue) => void;
   delete: (k: TKey) => boolean;
   clear?: () => void;
 }
 
-export interface MemoizyOptions<TResult = any> {
-  cache?: () => GenericCache<string, TResult>;
-  maxAge?: number;
-  cacheKey?: (...args: any[]) => string;
-  valueAccept?: null | ((err: Error | null, res?: TResult) => boolean);
+export interface CacheWithTimer<TKey = void, TValue = void>
+  extends Omit<GenericCache<TKey, TValue>, "set"> {
+  set: (k: TKey, v: TValue, exp: number) => void;
 }
 
-export interface MemoizedFunction<TResult> {
-  (...args: any[]): TResult;
-  delete: (...args: any[]) => boolean;
+export interface MemoizyOptions<
+  TArgs extends any[] = unknown[],
+  TResult = unknown,
+  TCacheKey = string,
+> {
+  /**
+   * A factory that returns a map like cache
+   */
+  cache?: () =>
+    | GenericCache<TCacheKey, TResult>
+    | CacheWithTimer<TCacheKey, TResult>;
+  /**
+   * Time, in milliseconds, to retain the result of the memoization
+   */
+  maxAge?: number;
+  /**
+   * A function to return the memoization key given the arguments of the function
+   */
+  cacheKey?: (...args: TArgs) => TCacheKey;
+  /**
+   *  A function that, given the result, returns a boolean to keep it or not.
+   */
+  valueAccept?:
+    | null
+    | ((err: Error | null, res?: TResult) => boolean);
+  /**
+   * If true the expiration is handled at cache level. In that case `set` takes three parameters and
+   * the last is the expiration time in milliseconds. Useful for redis caches
+   */
+  cacheHandlesExpiration?: boolean;
+}
+
+export interface MemoizedFunction<TResult, TArgs extends any[]> {
+  (...args: TArgs): TResult | Promise<TResult>;
+  delete: (...args: TArgs) => boolean;
   clear: () => void;
 }
-
-const defaultOptions = {
-  cache: () => new Map(),
-  maxAge: Infinity,
-  cacheKey: defaultCacheKeyBuilder,
-  valueAccept: null,
-};
 
 /**
  * Givent a function returns the memoized version of it
@@ -38,51 +62,65 @@ const defaultOptions = {
  * const add = (a, b) => a + b;
  * const memAdd = memoizy(add);
  * const res = memAdd(4, 5);
- * 
+ *
  * @param fn The function to be memoized
  * @param [config] The config for the memoization process. All the config are optional
  * @param [config.cache] A factory that returns a map like cache
  * @param [config.maxAge] Time, in milliseconds, to retain the result of the memoization
  * @param [config.cacheKey] A function to return the memoization key given the arguments of the function
  * @param [config.valueAccept] A function that, given the result, returns a boolean to keep it or not.
+ * @param [config.cacheHandlesExpiration] If true, expiration mechanism is left to the cache itself
  */
-export const memoizy = <TResult>(
-  fn: (...args: any[]) => TResult,
-  {
-    cache: cacheFactory = () => new Map<string, TResult>(),
-    maxAge = Infinity,
+export const memoizy = <
+  TResult,
+  TArgs extends any[],
+  TCacheKey = string,
+>(
+  fn: (...args: TArgs) => TResult | Promise<TResult>,
+  opt?: MemoizyOptions<TArgs, TResult, TCacheKey>,
+): MemoizedFunction<TResult, TArgs> => {
+  const {
+    cache: cacheFactory = () => new Map<TCacheKey, TResult>(),
     cacheKey = defaultCacheKeyBuilder,
+    maxAge = Infinity,
     valueAccept = null,
-  } = defaultOptions as MemoizyOptions<TResult>,
-): MemoizedFunction<TResult> => {
+    cacheHandlesExpiration = false,
+  } = opt || {};
   const hasExpireDate = maxAge > 0 && maxAge < Infinity;
   const cache = cacheFactory();
 
-  const set = (key: string, value: TResult) => {
-    if (hasExpireDate) {
-      setTimeout(() => {
-        cache.delete(key);
-      }, maxAge);
+  const set = (key: TCacheKey, value: TResult) => {
+    if (cacheHandlesExpiration && hasExpireDate) {
+      cache.set(key, value, maxAge);
+    } else {
+      if (hasExpireDate) {
+        setTimeout(() => {
+          cache.delete(key);
+        }, maxAge);
+      }
+      (cache as GenericCache<TCacheKey, TResult>).set(key, value);
     }
-    cache.set(key, value);
   };
 
-  const memoized = (...args: any[]) => {
-    const key = cacheKey(...args);
-    if (cache.has(key)) {
+  const onExistenceChecked = (
+    exists: boolean,
+    key: TCacheKey,
+    args: TArgs,
+  ) => {
+    if (exists) {
       return cache.get(key) as TResult;
     }
     const value = fn(...args);
 
     if (!valueAccept) {
-      set(key, value);
+      set(key, value as TResult);
     } else if (isPromise<TResult>(value)) {
       value
         .then((res) => [null, res])
         .catch((err) => [err])
         .then(([err, res]) => {
           if (valueAccept(err, res)) {
-            set(key, value);
+            set(key, res);
           }
         });
     } else if (valueAccept(null, value)) {
@@ -92,7 +130,18 @@ export const memoizy = <TResult>(
     return value;
   };
 
-  memoized.delete = (...args: any[]) => cache.delete(cacheKey(...args));
+  const memoized = (...args: TArgs) => {
+    const key = cacheKey(...args) as TCacheKey;
+    const existence = cache.has(key);
+    if (isPromise(existence)) {
+      return existence.then((exists) => onExistenceChecked(exists, key, args));
+    } else {
+      return onExistenceChecked(existence, key, args);
+    }
+  };
+
+  memoized.delete = (...args: TArgs) =>
+    cache.delete(cacheKey(...args) as TCacheKey);
   memoized.clear = () => {
     if (cache.clear instanceof Function) {
       cache.clear();
@@ -103,5 +152,3 @@ export const memoizy = <TResult>(
 
   return memoized;
 };
-
-export default memoizy;
