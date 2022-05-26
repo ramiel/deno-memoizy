@@ -162,6 +162,46 @@ const memFn = memoizy(fn, {
 });
 ```
 
+## Use Redis (or any cache that can handle data expiration)
+
+Your cache may have the ability to handle expiration by itself, for example Redis can do it.
+In this case you don't want memoizy to handle expiration internally just because it's more performant
+to let Redis do the job. You can specify `cacheHandlesExpiration = true` in the options. 
+The only difference is that the cache you provide must expect the expiration time in milliseconds 
+as third parameter of the `set` method. Here below an example with redis
+
+```js
+import { memoizy } from 'https://deno.land/x/memoizy/mod.ts';
+import { connect } from "https://deno.land/x/redis@v0.25.5/mod.ts";
+const redis = await connect({
+  // ...redis options
+});
+
+const redisCache = {
+  get: redis.get.bind(redis),
+  clear: redis.flushdb.bind(redis),
+  delete: redis.del.bind(redis),
+  set: (key, value, expiration) => {
+    if(expiration) {
+      return redis.set(key, value, {px: expiration});
+    } else {
+      return redis.set(key, value);
+    }
+  }
+};
+/**
+ * Function memoized with redis must return a promise because 
+ * redis lookup is asynchronous by nature
+ **/
+const fn = async (a,b) => a * b;
+
+const memoizedMultiplyOnRedis = memoizy(fn, {
+  maxAge: 5000,
+  cache: () => redisCache,
+  cacheHandlesExpiration: true,
+})
+```
+
 ## FP style alternative
 
 This library offers a variant which is handy if you develop in functional programming style.
